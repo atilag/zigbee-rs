@@ -24,6 +24,7 @@ pub struct ZigbeeModem<T: SerialPortParser>{
 impl <T: SerialPortParser> ZigbeeModem<T> {
 	pub fn new(device: String, mut parser: T) -> ZigbeeModem<T> {
         let serial_port = ZigbeeSerialPort::new(device);
+        parser.set_serial_port(Rc::new(RefCell::new(serial_port.clone())));
         ZigbeeModem{
             serial_port: Rc::new(RefCell::new(serial_port)),
 			token: Token(1),
@@ -35,14 +36,16 @@ impl <T: SerialPortParser> ZigbeeModem<T> {
 
 	pub fn run(&self){
 		trace!("Starting...");
-        let __refcell_serial = self.serial_port.borrow();
-        let fd = __refcell_serial.get_fd();
-		let evented_fd = EventedFd(&fd.as_raw_fd());
-        trace!("{:?}", evented_fd);
-		self.poll.register(&evented_fd, self.token, Ready::readable(), PollOpt::edge())
-            .unwrap_or_else(|err|{
-                error!("Error registering modem device!. Error {}", err);
-		});
+        {
+            let ref ref_fd = *self.serial_port.borrow();
+            let fd = ref_fd.get_fd();
+    		let evented_fd = EventedFd(&fd);
+            trace!("{:?}", evented_fd);
+    		self.poll.register(&evented_fd, self.token, Ready::readable(), PollOpt::edge())
+                .unwrap_or_else(|err|{
+                    error!("Error registering modem device!. Error {}", err);
+    		});
+        }
 
 		let mut events = Events::with_capacity(1024);
 
@@ -80,7 +83,12 @@ impl <T: SerialPortParser> ZigbeeModem<T> {
                 error!("Couldn't read from the serial port!!. Error = {}", e);
                 Err(())
             },
+            Ok(0) => {
+                error!("Serial port closed!");
+                Err(())
+            },
             Ok(size) => {
+                trace!("{} bytes read!", size);
                 self.parse(&buff[0..size])
             }
         }

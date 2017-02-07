@@ -22,8 +22,9 @@ const SETTINGS: serial::PortSettings = serial::PortSettings {
     flow_control: serial::FlowNone
 };
 
+#[derive(Clone)]
 pub struct ZigbeeSerialPort {
-    fd : TTYPort,
+    fd : Rc<RefCell<TTYPort>>,
 }
 impl ZigbeeSerialPort {
     pub fn new(device: String) -> ZigbeeSerialPort {
@@ -45,27 +46,31 @@ impl ZigbeeSerialPort {
             },
             Ok(_) => {
                 ZigbeeSerialPort{
-                    fd: port,
+                    fd: Rc::new(RefCell::new(port)),
                 }
             }
         }
+    }
+
+    pub fn get_fd(&self) -> RawFd{
+        (*self.fd.borrow()).as_raw_fd()
     }
 
 }
 impl Write for ZigbeeSerialPort {
     fn write(&mut self, buff: &[u8]) -> Result<usize, io::Error>{
         trace!("ZigbeeSerialPort::write() called!");
-        Ok(0 as usize)
+        self.fd.borrow_mut().write(buff)
     }
     fn flush(&mut self) -> Result<(),io::Error> {
         trace!("ZigbeeSerialPort::flush() called!");
-        Ok(())
+        self.fd.borrow_mut().flush()
     }
 }
 impl Read for ZigbeeSerialPort {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, io::Error> {
+    fn read(&mut self, buff: &mut [u8]) -> Result<usize, io::Error> {
         trace!("ZigbeeSerialPort::Read() called!");
-        Ok(0 as usize)
+        self.fd.borrow_mut().read(buff)
     }
 
 }
