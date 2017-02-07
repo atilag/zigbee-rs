@@ -1,0 +1,13 @@
+[package]
+name = "zigbee"
+version = "0.1.0"
+authors = ["Juan Gomez <atilag@gmail.com>"]
+
+[dependencies]
+serial = "0.3"
+mio = "0.6"
+env_logger = "0.3.1"
+log = "0.3.1"
+byteorder = "0.5"
+lazy_static = "0.1.*"
+libc = "0.2"
